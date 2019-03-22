@@ -1,0 +1,279 @@
+import processing.sound.*; 
+import processing.serial.*;
+import processing.video.*;
+
+Serial myPort0, myPort1;
+Capture cam;
+SoundFile sound;
+
+PImage[] img = new PImage[9];
+Tile[] tile = new Tile[9];
+PImage bg, instruction1, instruction2;
+
+float ini_X=800;
+float ini_Y=250;
+float ini_Wd=200;
+float ini_Ht=200;
+int tileNumber;
+int soundNumber;
+String reading; // readings from port
+
+
+void setup() {
+//size(1000,800);  //size for testing purpose
+fullScreen();
+bg = loadImage("wallpaper.png");
+bg.resize(1920, 1080);
+image(bg, 0, 0);
+cam = new Capture(this, 320, 240, 30);  //(this, 280, 210, 30);
+cam.start();
+
+instruction1 = loadImage("instruction1.png");
+image(instruction1, 780, 30);
+instruction2 = loadImage("instruction2.png");
+image(instruction2, 130, 880);
+
+
+
+   //String portName0 = Serial.list()[0]; //change the 0 to a 1 or 2 etc. to match your port
+   //myPort0 = new Serial(this, portName0, 9600);
+   //String portName1 = Serial.list()[1]; //change the 0 to a 1 or 2 etc. to match your port
+   //myPort1 = new Serial(this, portName1, 9600);
+   myPort0 = new Serial(this, "COM6", 9600);
+   myPort1 = new Serial(this, "COM5", 9600); 
+
+//image
+  for (int i=0; i<img.length; i++) {
+    tint(50);
+    img[i] = loadImage(i+".png");
+  }
+
+
+//tile class : image and position
+  for (int i=0; i<3; i++) {
+    for (int j=0; j<3; j++) {
+      tile[i*3+j]= new Tile(img[i*3+j], ini_X+i*(ini_Wd+10), ini_Y+j*(ini_Ht+10), ini_Wd, ini_Ht);
+    }
+}    
+   
+
+//display tile
+  for (int i=0; i<3; i++) {
+    for (int j=0; j<3; j++) {
+      tile[i*3+j].display();
+      println(i);
+    }
+  }
+}
+
+void playSound(){
+    sound = new SoundFile(this, tileNumber+".mp3");
+  sound.play();
+}
+
+
+void draw() {
+  if(cam.available()){
+  cam.read();
+}
+noTint();
+pushMatrix();
+rotate(PI/2);
+translate(560, -505);
+  image(cam, 0, 0);
+  popMatrix();
+  
+  
+  // get reading from button (double click)
+  if (myPort0.available() > 0) {
+    if ( (reading = myPort0.readStringUntil(ENTER)) != null )  reading = trim(reading);
+    else return;
+    if (reading != null) {
+        if ("off0".equals(reading)){
+          tileNumber = 0;
+          tile[0].hit();
+          myPort0.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); // turn off led and tint tile
+        }
+      
+        if ("off1".equals(reading)){
+          tileNumber = 1;
+          tile[1].hit();
+          myPort0.write(tileNumber); // turn the led off.
+          println(reading+"recieved");
+        }
+        
+        if ("off2".equals(reading)){
+          tileNumber = 2;
+          tile[2].hit();
+          myPort0.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); 
+        }
+        
+        if ("off3".equals(reading)){
+          tileNumber = 3;
+          tile[3].hit();
+          myPort0.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); // turn off led and tint tile
+        }
+      
+        if ("off4".equals(reading)){
+          tileNumber = 4;
+          tile[4].hit();
+          myPort0.write(tileNumber); // turn the led off.
+          println(reading+"recieved");
+        }
+    }
+    }
+
+  if (myPort1.available() > 0) {
+    if ( (reading = myPort1.readStringUntil(ENTER)) != null )  reading = trim(reading);
+    else return;
+    if (reading != null) {
+        
+        if ("off5".equals(reading)){
+          tileNumber = 5;          
+          tile[5].hit();
+          myPort1.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); 
+        }
+        
+        if ("off6".equals(reading)){
+          tileNumber = 6;          
+          tile[6].hit();
+          myPort1.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); // turn off led and tint tile
+        }
+      
+        if ("off7".equals(reading)){
+          tileNumber = 7;
+          tile[7].hit();
+          myPort1.write(tileNumber); // turn the led off.
+          println(reading+"recieved");
+        }
+        
+        if ("off8".equals(reading)){
+          tileNumber = 8;
+          tile[8].hit();
+          myPort1.write(tileNumber); // turn the led off.
+          println(reading+"recieved"); 
+        }        
+
+      }     
+  }    
+
+  for (int i=0; i<9; i++) {
+    tileNumber = i;
+    tile[tileNumber].onAndOff(tileNumber);
+  }
+} 
+
+
+void mouseClicked() {
+  loop();
+  //Detects click only if inside image
+  for (int i=0; i<tile.length; i++) {
+    if (tile[i].insidetile() == true) {
+      tileNumber = i;  //should play sound for user on tablet or not?   
+      tile[i].hit();
+      if (tileNumber <= 4) myPort0.write(tileNumber); // turn the led off.
+      if (tileNumber > 4) myPort1.write(tileNumber); // turn the led off.
+      
+     // if(mouseX>0 && mouseX<50 && mouseY>0 && mouseY<50){
+      //  setup();
+     // }
+      println("mouseclicked"+ tileNumber);
+    } 
+  }
+
+} 
+
+
+class Tile {
+
+  float x;
+  float y;
+  float wd;
+  float ht;
+  boolean isOn = false;
+  
+  int timeLimit;
+  int currentTime;
+
+  PImage img;
+
+  Tile(PImage _img, float _x, float _y, float _wd, float _ht) {
+    x = _x;
+    y = _y;
+    wd = _wd;
+    ht = _ht;
+    img = _img;
+    
+  }
+
+  void display() {
+    image(img, x, y, wd, ht);
+    resetTimers();
+  }
+  
+   boolean insidetile() {
+    if (mouseX>x && mouseX<x+wd && mouseY>y && mouseY<y+ht) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+
+  void resetTimers()
+  {
+    timeLimit = (int)random(100, 400);
+    currentTime = 0;
+  }
+  
+
+void hit(){
+  if (isOn == true) {  // if hit when the tile is on, 
+    playSound();  
+    tint(50);
+    image(img, x, y, wd, ht);
+    isOn = false;
+    println("hit");
+    resetTimers();
+}
+}
+
+
+void onAndOff(int tileNumber){
+    currentTime ++;
+     if (currentTime > timeLimit) {
+      if (isOn == true) {
+        tint(50);
+        image(img, x, y, wd, ht);
+        isOn = false;
+        if (tileNumber <= 4) myPort0.write(tileNumber);
+        if (tileNumber > 4) myPort1.write(tileNumber);//
+        if (tileNumber > 2){  //check the status of tile 3 to 8 because they are not working
+        println("turn off tile "+ tileNumber);
+        }
+      } else {     
+        noTint();
+        image(img, x, y, wd, ht);
+        isOn = true;
+        if(tileNumber == 0) myPort0.write('A');
+        if(tileNumber == 1) myPort0.write('B');
+        if(tileNumber == 2) myPort0.write('C');
+        if(tileNumber == 3) myPort0.write('D');
+        if(tileNumber == 4) myPort0.write('E');
+        if(tileNumber == 5) myPort1.write('F');
+        if(tileNumber == 6) myPort1.write('G');
+        if(tileNumber == 7) myPort1.write('H');
+        if(tileNumber == 8) myPort1.write('I');
+        if (tileNumber > 2){  //check the status of tile 3 to 8
+        println("turn on tile "+ tileNumber + " :"+(tileNumber+10)); 
+        }
+      }
+      resetTimers();
+    } 
+}
+}
